@@ -1,61 +1,69 @@
 import React, { Component } from 'react';
-import { uniqueId } from 'lodash';
+import PropTypes from 'prop-types';
 
-import { Todo } from './Todo';
+import { addItem, createItem, removeItemById } from './utils';
+import { Counter, InputGroup, TodoList } from './components';
 
 export class App extends Component {
-
-  state = {
-    todo: '',
-    todos: [ { text: 'Add your first todo' } ]
+  
+  constructor(props) {
+    super(props);
+    const { createTodo, initialTodo } = props;
+    this.state = {
+      count: initialTodo ? 1 : 0,
+      todos: initialTodo ? [createTodo({ text: initialTodo })] : [],
+    };
   }
-
-  componentDidUpdate = (prevProps, prevState) => {
-    const { todos: prevTodos } = prevState;
-    const { todos } = this.state;
-    if ( prevTodos.length !== todos.length ) {
-      document.querySelector('#counter').innerText = todos.length;
-    }
-  }
-
-  handleChange = event => this.setState({ todo: event.target.value });
-
-  handleClickAdd = () => {
-    const { todo, todos } = this.state;
-    todo && this.setState({ todos: [ ...todos, { text: todo } ] });
+  
+  handleClickAdd = (todo) => {
+    todo && this.setState(({ count, todos }) => {
+    const { addTodo, createTodo } = this.props;
+    const newTodo = createTodo({ text: todo});
+     return  { 
+        todos: addTodo(todos, newTodo),
+        count: (count + 1)
+      }
+    });
   };
 
-  handleClickDelete = index => {
-    console.log(`Deleting todo number ${index}`);
-    const { todos } = this.state;
-    this.setState({ todos: [
-      ...todos.slice(0, index),
-      ...todos.slice(index + 1)
-    ]});
+  handleClickDelete = idToDelete => {
+    const { deleteTodo } = this.props;
+    this.setState(({ count, todos}) => {
+      return {
+        todos: deleteTodo(todos, idToDelete),
+        count: (count - 1)
+      }
+    });
   }
 
   render() {
-    this.state.todos.forEach((todo, index) => {
-      this.state.todos[index] = { ...todo, id: uniqueId() };
-    });
-    const { todo, todos } = this.state;
+    const { todo, todos, count } = this.state;
+    const { className } = this.props;
     return (
-      <div className="todo-list">
+      <div className={className}>
         <h1>todos</h1>
-        <p><span id="counter">1</span> remaining</p>
-        <div>
-          {
-            todos.length
-              ? todos.map((todo, index) => <Todo key={todo.id} onClickDelete={() => this.handleClickDelete(index)} text={todo.text} />)
-              : 'You\'re all done 🌴'
-          }
-        </div>
-        <div className="todo-input">
-          <input onChange={this.handleChange} placeholder="..." type="text" value={todo}/>
-          <button onClick={this.handleClickAdd}>Add</button>
-        </div>
+        <Counter count={count} />
+        <TodoList 
+          handleClick={this.handleClickDelete} 
+          todos={todos} />
+        <InputGroup onSubmit={this.handleClickAdd}/>
       </div>
     )
   }
-
 }
+
+App.defaultProps = {
+  addTodo: addItem,
+  deleteTodo: removeItemById,
+  createTodo: createItem,
+  className: 'todo-list',
+  initialTodo: 'Add your first todo',
+};
+
+App.propTypes = {
+  addTodo: PropTypes.func.isRequired,
+  createTodo: PropTypes.func.isRequired,
+  deleteTodo: PropTypes.func.isRequired,
+  className: PropTypes.string,
+  initialTodo: PropTypes.string,
+};
